@@ -15,6 +15,7 @@ import {
   AuthSignInEntity,
   AuthSignUpEntity,
   EmailConfirmationEntity,
+  ForgotConfirmationEntity,
 } from '../auth/entities/auth.entity';
 import { UserEntity } from '../user/entities/user.entity';
 import {
@@ -105,6 +106,7 @@ export class AuthService {
     await this.userRepo.update(user.id, {
       email_confirmation_code: Math.floor(100000 + Math.random() * 900000),
       email_confirmation_token: token,
+      email_verification_count: 0,
     });
 
     //send code here
@@ -151,7 +153,9 @@ export class AuthService {
     return;
   }
 
-  async forgotPassword({ email }: ForgotPasswordDto): Promise<void> {
+  async forgotPassword({
+    email,
+  }: ForgotPasswordDto): Promise<ForgotConfirmationEntity> {
     const user: UserEntity = await this.userRepo.findOne({
       email: email,
     });
@@ -160,17 +164,23 @@ export class AuthService {
       throw new NotFoundException('Email not found');
     }
 
+    const token: string = makeRandomID(60);
     await this.userRepo.update(user.id, {
       forgot_confirmation_code: Math.floor(100000 + Math.random() * 900000),
-      forgot_confirmation_token: makeRandomID(60),
+      forgot_confirmation_token: token,
+      recover_password_count: 0,
     });
 
     //send code here
 
-    return;
+    return { forgot_confirmation_token: token };
   }
 
-  async updatePassword({ password, token }: UpdatePasswordDto): Promise<void> {
+  async updatePassword({
+    password,
+    token,
+    code,
+  }: UpdatePasswordDto): Promise<void> {
     const isValidToken: UserEntity = await this.userRepo.findOne({
       forgot_confirmation_token: token,
     });
@@ -179,10 +189,30 @@ export class AuthService {
       throw new NotFoundException('Invalid Token');
     }
 
+    if (isValidToken.recover_password_count >= 3) {
+      throw new BadRequestException('Token expires please regenerate it.');
+    }
+
+    const isValidCode: UserEntity = await this.userRepo.findOne({
+      forgot_confirmation_token: token,
+      forgot_confirmation_code: code,
+    });
+
+    if (!isValidCode) {
+      const count = isValidToken.recover_password_count + 1;
+
+      await this.userRepo.update(isValidToken.id, {
+        recover_password_count: count,
+        updated_at: moment().format('YYYY-MM-DDTHH:mm:ss'),
+      });
+      throw new BadRequestException('Invalid code.');
+    }
+
     const forgot_confirmation_token = makeRandomID(60);
 
     await this.userRepo.update(isValidToken.id, {
       forgot_confirmation_token: forgot_confirmation_token,
+      forgot_confirmation_code: Math.floor(100000 + Math.random() * 900000),
       password: bcrypt.hashSync(password, bcrypt.genSaltSync(12)),
     });
     return;

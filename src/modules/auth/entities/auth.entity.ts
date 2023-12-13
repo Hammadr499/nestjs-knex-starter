@@ -6,6 +6,11 @@ export class EmailConfirmationEntity {
   email_confirmation_token: string;
 }
 
+export class ForgotConfirmationEntity {
+  @Expose()
+  forgot_confirmation_token: string;
+}
+
 export class AuthSignUpEntity {
   @Expose()
   @Type(() => UserEntity)

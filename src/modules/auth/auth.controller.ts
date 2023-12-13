@@ -13,6 +13,7 @@ import {
   AuthSignInEntity,
   AuthSignUpEntity,
   EmailConfirmationEntity,
+  ForgotConfirmationEntity,
 } from './entities/auth.entity';
 
 @ApiTags('Auth')
@@ -63,18 +64,27 @@ export class AuthController {
 
   @Post('/forgot-password')
   @ApiOperation({ summary: 'User Forgot Password' })
-  @HttpCode(204)
+  @HttpCode(200)
   async forgotPassword(
     @Body() forgotPasswordDto: ForgotPasswordDto,
-  ): Promise<void> {
+  ): Promise<ForgotConfirmationEntity> {
     return await this.authService.forgotPassword(forgotPasswordDto);
   }
 
-  @Post('/recover-password')
+  @Post('/recover-password/:token')
   @ApiOperation({ summary: 'User Recover Password' })
+  @ApiParam({ name: 'token', type: 'string' })
+  @ApiBody({
+    type: 'string',
+    schema: {
+      type: 'object',
+      nullable: false,
+      properties: { code: { type: 'string' }, password: { type: 'string' } },
+    },
+  })
   @HttpCode(204)
   async updatePassword(
-    @Body() updatePasswordDto: UpdatePasswordDto,
+    @ParamAndBody() updatePasswordDto: UpdatePasswordDto,
   ): Promise<void> {
     return await this.authService.updatePassword(updatePasswordDto);
   }

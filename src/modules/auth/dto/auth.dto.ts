@@ -57,6 +57,12 @@ export class UpdatePasswordDto {
   @Transform(({ value }) => value.trim())
   @IsNotEmpty()
   @IsString()
+  @MinLength(6)
+  code: string;
+
+  @Transform(({ value }) => value.trim())
+  @IsNotEmpty()
+  @IsString()
   token: string;
 }
 
